@@ -1,0 +1,70 @@
+{
+  "TRAN": {
+    "TRANCM": "0",
+    "TRANCI": 0,
+    "TRANG": 0,
+    "TRANP": 0,
+    "TRANM": 0
+  },
+  "HHI": {
+    "HHIC": "0",
+    "HHIHC": 0,
+    "HHICOM": 0,
+    "HHIM": 0
+  },
+  "HC": {
+    "HCI": "0",
+    "HCV": 0,
+    "HCD": 0,
+    "HCDV": 0,
+    "HCCON": 0,
+    "HCSUP": 0,
+    "HCGYM": 0,
+    "HCMED": 0,
+    "HCMEN": 0
+  },
+  "IMP": {
+    "IMPC": 0,
+    "IMPB": 0,
+    "IMPP": 0,
+    "IMPA": 0
+  },
+  "UTIL": {
+    "UTILI": "0",
+    "UTILP": 0
+  },
+  "MISC": {
+    "MISC": "0"
+  },
+  "ENT": {
+    "ENT": "0"
+  },
+  "RENT": {
+    "RENT": "0"
+  },
+  "FOOD": {
+    "FOODG": "0",
+    "FOODEO": "0"
+  },
+  "TRAV": {
+    "TRAV": "0"
+  },
+  "SSI": {
+    "SSI": "0"
+  },
+  "SAV": {
+    "SAV": "0"
+  },
+  "CHAR": {
+    "CHAR": "0"
+  },
+  "RET": {
+    "RETT": "0",
+    "RETD": "0"
+  },
+  "TAX": {
+    "TAXF": "0",
+    "TAXS": "0",
+    "TAXM": "0"
+  }
+}

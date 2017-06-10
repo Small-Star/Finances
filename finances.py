@@ -57,14 +57,9 @@ def im_tsp(tsp_path=TSP_PATH):
     #Cull for correct file names (properly formatted file should have the name TSP_Balance_YYYY_MM_DD.csv)
     __ = [f for f in _ if (f[-3:]=="csv" and f[:11]=="TSP_Balance")]
 
-    #Find most recent entry
-    i, v = 0, 0
-    
-    while v!=None:
-        v = sheet_icpr.cell_value_by_index(0,2+i)
-        i = i + 1
+    i = find_empty_space(sheet_icpr,0,2)
 
-    most_recent_date = datetime.datetime.strptime(sheet_icpr._oSheet.getCellByPosition(0,i).getString(),'%m/%d/%y').date()
+    most_recent_date = datetime.datetime.strptime(sheet_icpr._oSheet.getCellByPosition(0,i-2).getString(),'%m/%d/%y').date()
     next_row = i + 1
     
     #Cull for unrecorded TSP statements
@@ -113,15 +108,10 @@ def im_cc():
 def im_cash():
     pass
 
-def im_paystub(force_reimport=False, paystub_path=PAYSTUB_PATH):
-    '''Reads any unread paystubs; if force_reimport is True then rereads all existing paystubs'''
+def im_paystub(paystub_path=PAYSTUB_PATH):
+    '''Reads any unread paystubs'''
     
     sheet_ect = doc.sheets.sheet(SHEET_ECT)
-    PAYSTUB_OFFSET=25
-    
-    #TODO: Reimport
-    if force_reimport:
-        pass
 
     try:
         target_date = datetime.datetime.strptime(sheet_ect._oSheet.getCellByPosition(2,1).getString(),'%m/%d/%y').date()
@@ -154,14 +144,17 @@ def im_paystub(force_reimport=False, paystub_path=PAYSTUB_PATH):
         except:
           logger.error("PDF parsing error while parsing " + field + " in: " + full_path)  
 
-    #Temporary holding; TODO: refactor by giving them individual expense/income lines
-          
+    #Beginning Date
+    beg_date = validate_pdf_data("Beginning Date", "(?<=\*\*\*\*)\d\d/\d\d/\d\d\d\d")
+    print("Beginning Date: " + str(beg_date))
+    
     #Hours Worked
     hours_worked = validate_pdf_data("Hours Worked", "(?<=GROSS PAY \*\*\*\*)\d\d.\d\d")
     print("Hours Worked: " + str(hours_worked))
 
     #Assumes 7 digit pay string
     gross_pay = validate_pdf_data("Gross Pay", "(?<=GROSS PAY \*\*\*\*\d\d.\d\d)(\d){4}.\d\d")
+    create_inc_listing(datetime.datetime.strftime(target_date,'%m/%d/%y'),INC_SOURCE,"INCBAS",gross_pay)
     print("Gross Pay: " + str(gross_pay))
 
     #Bonus
@@ -174,61 +167,104 @@ def im_paystub(force_reimport=False, paystub_path=PAYSTUB_PATH):
         inc_bonus = 0
     else:
         inc_bonus = inc_bonus_str
-    print("Bonus: " + str(inc_bonus))
-    #print("TMPBonus: " + str(tmp_b_str))
+        create_inc_listing(datetime.datetime.strftime(target_date,'%m/%d/%y'),INC_SOURCE,"INCBON",inc_bonus)
+        print("Bonus: " + str(inc_bonus))
 
     #TODO: OT
 
     #Retirement Contribution
     retirement = validate_pdf_data("Retirement Contribution", "(?<=RETIREMENT)(\d){3,5}\.\d\d")
-    print("Retirement Contribution: " + str(retirement))
+    create_exp_listing("Retirement Cont.",INC_SOURCE, retirement, datetime.datetime.strftime(target_date,'%m/%d/%y'), "RETD")
+    #print("Retirement Contribution: " + str(retirement))
 
     #TSP Contribution
     tsp = validate_pdf_data("TSP Contribution", "(?<=ROTH TSP-FERS)(\d){3,5}\.\d\d")
-    print("TSP Contribution: " + str(tsp))
+    create_exp_listing("TSP Cont.",INC_SOURCE, tsp, datetime.datetime.strftime(target_date,'%m/%d/%y'), "RETT")
+    #print("TSP Contribution: " + str(tsp))
 
     #Social Security
     ss = validate_pdf_data("Social Security", "(?<=SOCIAL SECURITY \(OASDI\))(\d){3,5}\.\d\d")
-    print("Social Security: " + str(ss))
+    create_exp_listing("Social Security","US GOV", ss, datetime.datetime.strftime(target_date,'%m/%d/%y'), "SSI")
+    #print("Social Security: " + str(ss))
 
     #Federal Tax
     fed_tax = validate_pdf_data("Federal Tax", "(?<=FEDERAL TAX EXEMPTS S03)(\d){3,5}\.\d\d")
-    print("Federal Tax: " + str(fed_tax))
+    create_exp_listing("Fed. Tax Withholding","US GOV", fed_tax, datetime.datetime.strftime(target_date,'%m/%d/%y'), "TAXF")
+    #print("Federal Tax: " + str(fed_tax))
 
     #State Tax
     state_tax = validate_pdf_data("State Tax", "(?<=ST TAX \w\w   EXEMPTS 001)(\d){3,5}\.\d\d")
-    print("StateTax: " + str(state_tax))
+    create_exp_listing("State Tax Withholding","State Gov", state_tax, datetime.datetime.strftime(target_date,'%m/%d/%y'), "TAXS")
+    #print("StateTax: " + str(state_tax))
 
     #Health Insurance Premium
     health_ins_premium = validate_pdf_data("Health Insurance Premium", "(?<=FEHBA - ENROLL CODE  \d\d\d)(\d){2,3}\.\d\d")
-    print("Health Insurance Premium: " + str(health_ins_premium))
+    create_exp_listing("Health Ins. Premium","Aetna", health_ins_premium, datetime.datetime.strftime(target_date,'%m/%d/%y'), "HCI")
+    #print("Health Insurance Premium: " + str(health_ins_premium))
 
     #Vision Insurance Premium
     vision_ins_premium = validate_pdf_data("Vision Insurance Premium", "(?<=VISION PLAN)(\d){1,3}\.\d\d")
-    print("Vision Insurance Premium: " + str(vision_ins_premium))
+    create_exp_listing("Vision Insurance Premium","Aetna", vision_ins_premium, datetime.datetime.strftime(target_date,'%m/%d/%y'), "HCV")
+    #print("Vision Insurance Premium: " + str(vision_ins_premium))
 
     #Misc
     misc = validate_pdf_data("Misc", "(?<=UNION.ASSOCIATION DUES \d\d \d\d\d\d)(\d){1,3}\.\d\d")
-    print("Misc: " + str(misc))
+    create_exp_listing("Misc--Dues",INC_SOURCE, misc, datetime.datetime.strftime(target_date,'%m/%d/%y'), "MISC")
+    #print("Misc: " + str(misc))
 
     #Medicare
     medicare = validate_pdf_data("Medicare", "(?<=MEDICARE TAX WITHHELD)(\d){2}\.\d\d")
-    print("Medicare: " + str(medicare))
+    create_exp_listing("Medicare Withholding","US GOV", medicare, datetime.datetime.strftime(target_date,'%m/%d/%y'), "TAXM")
+    #print("Medicare: " + str(medicare))
 
     #Gym
     gym = validate_pdf_data("Gym", "(?<=DISCRETIONARY ALLOTMENT)(\d){2}\.\d\d")
-    print("Gym: " + str(gym))
+    create_exp_listing("Gym",INC_SOURCE, gym, datetime.datetime.strftime(target_date,'%m/%d/%y'), "HCGYM")
+    #print("Gym: " + str(gym))
 
-    #Beginning Date
-    beg_date = validate_pdf_data("Beginning Date", "(?<=\*\*\*\*)\d\d/\d\d/\d\d\d\d")
-    print("Beginning Date: " + str(beg_date))
+    #print("Deductions: " + str(retirement + tsp + ss + fed_tax + state_tax + health_ins_premium + vision_ins_premium + misc + medicare + gym))    
+    #print("MISC: " + str(misc))
+    #print("HC: " + str(health_ins_premium + vision_ins_premium + gym))
+    #print("RET: " + str(retirement + tsp))
+    #print("TAX: " + str(fed_tax + state_tax + medicare))
+
+def create_inc_listing(date, source, category, amount):
+    '''Creates an entry on the income page from provided fields'''
     
-    print("Deductions: " + str(retirement + tsp + ss + fed_tax + state_tax + health_ins_premium + vision_ins_premium + misc + medicare + gym))    
-    print("MISC: " + str(misc))
-    print("HC: " + str(health_ins_premium + vision_ins_premium + gym))
-    print("RET: " + str(retirement + tsp))
-    print("TAX: " + str(fed_tax + state_tax + medicare))
+    sheet_inc = doc.sheets.sheet(SHEET_INC)
     
+    i = find_empty_space(sheet_inc,0,2)
+
+    sheet_inc.set_cell_value_by_index(date, 0, i,is_formula=False)
+    sheet_inc.set_cell_value_by_index(source, 1, i,is_formula=False)
+    sheet_inc.set_cell_value_by_index(category, 2, i,is_formula=False)
+    sheet_inc.set_cell_value_by_index(amount, 3, i,is_formula=False)
+
+def create_exp_listing(purchase, payable_to, amount, date, category):
+    '''Creates an entry on the income page from provided fields'''
+    
+    sheet_oel = doc.sheets.sheet(SHEET_OEL)
+    
+    i = find_empty_space(sheet_oel,0,2)
+    
+    sheet_oel.set_cell_value_by_index(purchase, 0, i,is_formula=False)
+    sheet_oel.set_cell_value_by_index(payable_to, 1, i,is_formula=False)
+    sheet_oel.set_cell_value_by_index(amount, 2, i,is_formula=False)
+    sheet_oel.set_cell_value_by_index(date, 3, i,is_formula=False)
+    sheet_oel.set_cell_value_by_index(category, 4, i,is_formula=False)
+
+def find_empty_space(sheet,col_num,starting_from):
+    '''Returns index of first empty space in column after starting_from'''
+
+    #Find empty line
+    i, v = starting_from, 0
+    
+    while v!=None:
+        v = sheet.cell_value_by_index(col_num,i)
+        i = i + 1
+
+    return i - 1
+
 def read_old():
     expenses, income = [], []
     expenses.append(read_exp())
@@ -409,7 +445,7 @@ def get_most_recent_period():
     end_date = sheet_ect._oSheet.getCellByPosition(2, 1).getString()
 
     return (beg_date,end_date)
-
+        
 def get_income(dates):
     '''Returns the sum of all income for the given time period (inclusive, exclusive)'''
 

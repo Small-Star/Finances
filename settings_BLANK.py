@@ -1,11 +1,13 @@
 FILENAME=""
 LOG_FILENAME=""
-CATEGORIES_FILENAME="category_targets.json"
+CATEGORIES_FILENAME=""
 TSP_PATH=""
 PAYSTUB_PATH=""
 PYOOCALCPATH=""
 
 TIME_INTERVAL=14 #How often to bin things (days)
+INC_SOURCE=""
+PAYSTUB_OFFSET=25
 
 SHEET_ECT=0 #Index for Expense Category Tracking sheet
 SHEET_CEL=1 #Index for Cash Expense List sheet
